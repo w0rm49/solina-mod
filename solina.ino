@@ -1,15 +1,17 @@
 /* Arduino Synth from
 https://janostman.wordpress.com/2016/01/15/how-to-build-your-very-own-string-synth/
 */
+
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #ifndef cbi
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+  #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #endif
 #ifndef sbi
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+  #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
+
 // Standard Arduino Pins
 #define digitalPinToPortReg(P) \
         (((P) >= 0 && (P) <= 7) ? &PORTD : (((P) >= 8 && (P) <= 13) ? &PORTB : &PORTC))
@@ -21,6 +23,7 @@ https://janostman.wordpress.com/2016/01/15/how-to-build-your-very-own-string-syn
         (((P) >= 0 && (P) <= 7) ? (P) : (((P) >= 8 && (P) <= 13) ? (P) -8 : (P) -14))
 #define digitalReadFast(P) bitRead(*digitalPinToPINReg(P), digitalPinToBit(P))
 #define digitalWriteFast(P, V) bitWrite(*digitalPinToPortReg(P), digitalPinToBit(P), (V))
+
 const unsigned char PS_2 = (1 << ADPS0);;
 const unsigned char PS_4 = (1 << ADPS1);
 const unsigned char PS_8 = (1 << ADPS1) | (1 << ADPS0);
@@ -28,6 +31,7 @@ const unsigned char PS_16 = (1 << ADPS2);
 const unsigned char PS_32 = (1 << ADPS2) | (1 << ADPS0);
 const unsigned char PS_64 = (1 << ADPS2) | (1 << ADPS1);
 const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+
 uint32_t NOTES[12]={208065>>2,220472>>2,233516>>2,247514>>2,262149>>2,277738>>2,
   294281>>2,311779>>2,330390>>2,349956>>2,370794>>2,392746>>2};
 int8_t keytable[40];
@@ -65,19 +69,21 @@ uint8_t OSCNOTES[4];
 int16_t volume=0;
 uint8_t ENVsmoothing;
 uint8_t envcnt=10;
+
 //-------- Synth parameters --------------
-uint32_t FREQ[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};  //DCO pitch
-volatile uint32_t DETUNE=0;  //Osc spread or detune
-volatile uint8_t CUTOFF=0;  //freq 0-255
-volatile uint8_t RESONANCE=0;  //resonance=0-255
-volatile uint16_t LFO=32;  //Lfo rate 0-255
-volatile uint8_t VCA=255;  //VCA level 0-255
-volatile uint8_t ATTACK=1;  // ENV Attack rate 0-255
-volatile uint8_t RELEASE=1;  // ENV Release rate 0-255
-volatile uint8_t ENVELOPE=0;  // ENV Shape
-volatile uint8_t TRIG=0;  //MIDItrig 1=note ON
+uint32_t FREQ[16]={ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };  //DCO pitch
+volatile uint32_t DETUNE = 0;  //Osc spread or detune
+volatile uint8_t CUTOFF = 0;  //freq 0-255
+volatile uint8_t RESONANCE = 0;  //resonance=0-255
+volatile uint16_t LFO = 32;  //Lfo rate 0-255
+volatile uint8_t VCA = 255;  //VCA level 0-255
+volatile uint8_t ATTACK = 1;  // ENV Attack rate 0-255
+volatile uint8_t RELEASE = 1;  // ENV Release rate 0-255
+volatile uint8_t ENVELOPE = 0;  // ENV Shape
+volatile uint8_t TRIG = 0;  //MIDItrig 1=note ON
 volatile int16_t BEND;  //Pitchbend
 volatile int16_t MOD;  //MODwheel
+
 //-----------------------------------------
 volatile int16_t BENDoffset;  //Pitchbend center
 volatile uint32_t olddetune;
@@ -99,21 +105,23 @@ int16_t M6;
 int16_t MX1;
 int16_t MX2;
 int8_t coefficient;
+
 ISR(TIMER1_COMPA_vect) {
-        //-------------------- 8 DCO block ------------------------------------------
-        DCO=0;
-        for (uint8_t i=0; i<8; i++) {
-                if (integrators[i]) integrators[i]--; //Decrement integrators
-                DCOPH[i] += FREQ[i]; //Add freq to phaseacc's
-                if (DCOPH[i]&0x800000) { //Check for integrator reset
-                        DCOPH[i]&=0x7FFFFF; //Trim NCO
-                        integrators[i]=28; //Reset integrator
-                }
-                DCO+=integrators[i];
-        }
-        writepointer++;
-        delayline[writepointer]=DCO;
-        DCO+=(delayline[(writepointer-lfoval2)&255]*PHASERMIX)>>8;
+  
+  //-------------------- 8 DCO block ------------------------------------------
+  DCO=0;
+  for (uint8_t i=0; i<8; i++) {
+    if (integrators[i]) integrators[i]--; //Decrement integrators
+    DCOPH[i] += FREQ[i]; //Add freq to phaseacc's
+    if (DCOPH[i]&0x800000) { //Check for integrator reset
+            DCOPH[i]&=0x7FFFFF; //Trim NCO
+            integrators[i]=28; //Reset integrator
+    }
+    DCO+=integrators[i];
+  }
+  writepointer++;
+  delayline[writepointer]=DCO;
+  DCO+=(delayline[(writepointer-lfoval2)&255]*PHASERMIX)>>8;
         //-----------------------------------------------------------------
         //------------------ VCA block ------------------------------------
  #define M(MX, MX1, MX2) \
@@ -146,6 +154,7 @@ ISR(TIMER1_COMPA_vect) {
         OCR1A = 758-lfoval;
         //-----------------------------------------------------------------
 }
+
 ISR(TIMER0_COMPA_vect) {
         //------------------------------ LFO Block -----------------------
         lfocounter+=LFO;
@@ -164,14 +173,8 @@ ISR(TIMER0_COMPA_vect) {
         //-----------------------------------------------------------------
 }
 
-/*
-   ISR(USART_RX_vect)
-   {
-     //Midiin.sendByte(UDR0);
-   }
-*/
-volatile uint8_t MIDISTATE=0;
-volatile uint8_t MIDIRUNNINGSTATUS=0;
+volatile uint8_t MIDISTATE = 0;
+volatile uint8_t MIDIRUNNINGSTATUS = 0;
 volatile uint8_t MIDINOTE;
 volatile uint8_t MIDIVEL;
 
@@ -189,33 +192,44 @@ ISR(USART_RX_vect) {
   5.Any data bytes are ignored when the buffer is 0.
   */
 
-  if ((MIDIRX>0xBF)&&(MIDIRX<0xF8)) {
-    MIDIRUNNINGSTATUS=0;
-    MIDISTATE=0;
+  if ( (MIDIRX>0xBF) && (MIDIRX<0xF8) ) {
+    MIDIRUNNINGSTATUS = 0;
+    MIDISTATE = 0;
     return;
   }
 
-  if (MIDIRX>0xF7) return;
+  if (MIDIRX > 0xF7) {
+    return;
+  }
   
   if (MIDIRX & 0x80) {
-    MIDIRUNNINGSTATUS=MIDIRX;
-    MIDISTATE=1;
+    MIDIRUNNINGSTATUS = MIDIRX;
+    MIDISTATE = 1;
     return;
   }
   
   if (MIDIRX < 0x80) {
-    if (!MIDIRUNNINGSTATUS) return;
-      if (MIDISTATE==1) {
-        MIDINOTE=MIDIRX;
-        MIDISTATE++;
-        return;
-      }
+    if (!MIDIRUNNINGSTATUS) {
+      return;
+    }
+
+    if (MIDISTATE == 1) {
+      MIDINOTE = MIDIRX;
+      MIDISTATE++;
+      return;
+    }
   
-    if (MIDISTATE==2) {
-      MIDIVEL=MIDIRX;
-      MIDISTATE=1;
-      if ((MIDIRUNNINGSTATUS==0x80)||(MIDIRUNNINGSTATUS==0x90)) handleMIDINOTE(MIDIRUNNINGSTATUS,MIDINOTE,MIDIVEL);
-      //if (MIDIRUNNINGSTATUS==0xB0) handleMIDICC(MIDINOTE,MIDIVEL);
+    if (MIDISTATE == 2) {
+      MIDIVEL = MIDIRX;
+      MIDISTATE = 1;
+      
+      if ( (MIDIRUNNINGSTATUS == 0x80) || (MIDIRUNNINGSTATUS == 0x90) ) {
+        handleMIDINOTE(MIDIRUNNINGSTATUS, MIDINOTE, MIDIVEL);
+      }
+      
+      if (MIDIRUNNINGSTATUS==0xB0) {
+        handleMIDICC(MIDINOTE, MIDIVEL);
+      }
   
       return;
     }
@@ -224,55 +238,7 @@ ISR(USART_RX_vect) {
   return;
 }
 
-
-
-const uint8_t scannerReadPins[4] = {14, 15, 16, 17};
-const uint8_t notesMap[32] = {
-  29, 37, 45, 53, 
-  30, 38, 46, 54,
-  31, 39, 47, 55,
-  32, 40, 48, 56,
-  33, 41, 49, 57,
-  34, 42, 50, 58,
-  35, 43, 51, 59,
-  36, 44, 52, 60 
-};
-
 void setup() {
-/*
-        //Keyscanner inputs
-        pinMode(2,INPUT_PULLUP);
-        pinMode(3,INPUT_PULLUP);
-        pinMode(4,INPUT_PULLUP);
-        pinMode(5,INPUT_PULLUP);
-        pinMode(6,INPUT_PULLUP);
-        pinMode(7,INPUT_PULLUP);
-        pinMode(8,INPUT_PULLUP);
-        pinMode(9,INPUT_PULLUP);
-        //Keyscanner outputs
-        pinMode(14, OUTPUT);
-        pinMode(15, OUTPUT);
-        pinMode(16, OUTPUT);
-        pinMode(17, OUTPUT);
-        pinMode(18, OUTPUT);
-*/
-
-/*
-        //Keyscanner outputs
-        pinMode(2,OUTPUT);
-        pinMode(3,OUTPUT);
-        pinMode(4,OUTPUT);
-        pinMode(5,OUTPUT);
-        pinMode(6,OUTPUT);
-        pinMode(7,OUTPUT);
-        pinMode(8,OUTPUT);
-        pinMode(9,OUTPUT);
-        //Keyscanner inouts
-        pinMode(scannerReadPins[0], INPUT_PULLUP);
-        pinMode(scannerReadPins[1], INPUT_PULLUP);
-        pinMode(scannerReadPins[2], INPUT_PULLUP);
-        pinMode(scannerReadPins[3], INPUT_PULLUP);
-*/        
         //PWM and GATE outputs
         pinMode(11, OUTPUT);
         pinMode(10, OUTPUT);
@@ -336,8 +302,6 @@ void setup() {
         ADMUX = 69;
         sbi(ADCSRA, ADSC);
 
-        //experiment
-        //handleMIDINOTE(0x90,51,127);
 }
 //---------------- Get the base frequency for the MIDI note ---------------
 uint32_t MIDI2FREQ(uint8_t note) {
@@ -388,95 +352,22 @@ void handleMIDINOTE(uint8_t status,uint8_t note,uint8_t vel) {
         }
 }
 
+#define CC_DETUNE 10
+#define CC_MOD 11
+#define CC_PHASERMIX 12
+#define CC_ATTACK 13
+#define CC_RELEASE 14
+
+void handleMIDICC(uint8_t CC, uint8_t value) {
+  if ( CC == CC_DETUNE ) { DETUNE = value; }
+  if ( CC == CC_MOD ) { MOD = value << 1; }
+  if ( CC == CC_PHASERMIX ) { PHASERMIX = value << 1; }
+  if ( CC == CC_ATTACK ) { ATTACK = value << 1; }
+  if ( CC == CC_RELEASE ) { RELEASE = value << 1; }
+  return;
+}
+
 //-------------------------------------------------------------------------
 void loop() {
-        //Serial.begin(9600);
-        uint8_t k=0;
-        uint8_t z;
-        uint8_t w=0;
-        int8_t MUX=5;
-        while(1) {
-                //------------------ Key scanner -----------------------------
-                /*
-                PORTC|=0x1F;
-                if ((k&0x38)==(0x00<<3)) PORTC&=B11111110;
-                if ((k&0x38)==(0x01<<3)) PORTC&=B11111101;
-                if ((k&0x38)==(0x02<<3)) PORTC&=B11111011;
-                if ((k&0x38)==(0x03<<3)) PORTC&=B11110111;
-//                if ((k&0x38)==(0x04<<3)) PORTC&=B11101111;
-                keytable[k]=digitalReadFast((k&7)+2);
-                if (oldkeytable[k]!=keytable[k]) { //Handle keyevent
-                        oldkeytable[k]=keytable[k];
-                        if (keytable[k]==0) {
-                                handleMIDINOTE(0x90,k+21,127);
-                        }
-                        else {
-                                handleMIDINOTE(0x80,k+21,0);
-                        }
-                }
-                k++;
-                if (k==32) {
-                        k=0;
-                }
-                digitalWriteFast(10,TRIG);
-                */
 
-                /*
-                //PORTC|=0x1F;
-                PORTD |= B11111100;
-                PORTB |= B00000011;
-                
-                if ((k & 0x3C ) == (0x00 << 2)) PORTD &= B11111011; // PORTB &= B00000011;
-                if ((k & 0x3C ) == (0x01 << 2)) PORTD &= B11110111;
-                if ((k & 0x3C ) == (0x02 << 2)) PORTD &= B11101111;
-                if ((k & 0x3C ) == (0x03 << 2)) PORTD &= B11011111;
-                if ((k & 0x3C ) == (0x04 << 2)) PORTD &= B10111111;
-                if ((k & 0x3C ) == (0x05 << 2)) PORTD &= B01111111;
-                if ((k & 0x3C ) == (0x06 << 2)) PORTB &= B11111110;
-                if ((k & 0x3C ) == (0x07 << 2)) PORTB &= B11111101;
-                
-                keytable[k] = digitalReadFast(scannerReadPins[ k & 3 ]);
-                if ( oldkeytable[k] != keytable[k] ) { //Handle keyevent
-                        oldkeytable[k]=keytable[k];
-                        if (keytable[k]==0) {
-                                handleMIDINOTE(0x90, notesMap[k], 127);
-                        } else {
-                                handleMIDINOTE(0x80, notesMap[k], 0);
-                        }
-                }
-                k++;
-                if (k == 32) {
-                        k = 0;
-                }
-                digitalWriteFast(10,TRIG);
-                */
-
-                
-                //---------------------------------------------------------------
-                //--------------- ADC block -------------------------------------
-                while (bit_is_set(ADCSRA, ADSC)) ; //Wait for ADC EOC
-                if (MUX==7) DETUNE=((ADCL+(ADCH<<8))>>3);
-                if (MUX==7) MOD=((ADCL+(ADCH<<8))>>2);
-                if (MUX==6) PHASERMIX=((ADCL+(ADCH<<8))>>2);
-                if (MUX==5) ENVELOPE=((ADCL+(ADCH<<8))>>5);
-                if (MUX==5) ATTACK=ATTrates[ENVELOPE];
-                if (MUX==5) RELEASE=RELrates[ENVELOPE];
-                if (RELEASE==255) GATED=0;
-                if (RELEASE!=255) GATED=1;
-                if (DETUNE!=olddetune) {
-                        olddetune=DETUNE;
-                        for (uint8_t i=0; i<4; i++) {
-                                if (FREQ[i<<1]) {
-                                        FREQ[(i<<1)|1]=FREQ[i<<1]+(((FREQ[i<<1]/50)>>0)*DETUNE/127);
-                                }
-                        }
-                }
-                //Serial.print(CUTOFF,DEC);
-                //Serial.print("\n");
-                MUX++;
-                if (MUX>7) MUX=5;
-                ADMUX = 64 | MUX; //Select MUX
-                sbi(ADCSRA, ADSC); //start next conversation
-                //--------------------------------------------------------------------
-        }
 }
